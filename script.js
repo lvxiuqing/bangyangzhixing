@@ -2084,6 +2084,14 @@ function handleGradeChange() {
     currentStudentId = ''; // 重置学生选择
     studentSelect.value = '';
     
+    // 保存年级选择到 localStorage
+    if (currentGrade) {
+        localStorage.setItem('lastSelectedGrade', currentGrade);
+    } else {
+        localStorage.removeItem('lastSelectedGrade');
+    }
+    localStorage.removeItem('lastSelectedClass'); // 清除班级选择
+    
     // 更新班级选择框的选项
     updateClassOptions();
     
@@ -2144,6 +2152,13 @@ function handleClassChange() {
     currentClass = classSelect.value;
     currentStudentId = ''; // 重置学生选择
     studentSelect.value = '';
+    
+    // 保存班级选择到 localStorage
+    if (currentClass) {
+        localStorage.setItem('lastSelectedClass', currentClass);
+    } else {
+        localStorage.removeItem('lastSelectedClass');
+    }
     
     // 更新学生列表（优先从 Supabase 云端拉取）
     if (Supabase.isEnabled() && currentGrade && currentClass) {
@@ -2649,6 +2664,24 @@ async function initializeMainInterface() {
     // 从localStorage加载学生数据
     loadStudentsData();
     
+    // 恢复上次选择的年级和班级
+    const lastGrade = localStorage.getItem('lastSelectedGrade');
+    const lastClass = localStorage.getItem('lastSelectedClass');
+    
+    if (lastGrade) {
+        currentGrade = lastGrade;
+        if (gradeSelect) {
+            gradeSelect.value = lastGrade;
+        }
+    }
+    
+    if (lastClass && lastGrade) {
+        currentClass = lastClass;
+        if (classSelect) {
+            classSelect.value = lastClass;
+        }
+    }
+    
     // 如果已选择年级和班级，且启用了 Supabase，从云端加载数据
     if (currentGrade && currentClass && Supabase.isEnabled()) {
         console.log('从 Supabase 加载学生数据...', currentGrade, currentClass);
@@ -2661,6 +2694,10 @@ async function initializeMainInterface() {
     // 初始化班级选项（教师端/家长端）
     if (currentUserType === 'teacher') {
         updateClassOptions();
+        // 恢复班级选择（在选项更新后）
+        if (currentClass && classSelect) {
+            classSelect.value = currentClass;
+        }
     } else {
         updateParentClassOptions();
     }

@@ -2475,21 +2475,23 @@ async function fetchStudentsFromCloud(grade, className) {
             if (res && res.ok && Array.isArray(res.students)) {
                 // 先清空该班旧数据
                 clearClassStudentsData(grade, className);
-                // 按返回数据写入（生成稳定 id）
-                res.students.forEach((s, idx) => {
-                    const sid = `${grade}_${className}_${idx}_${s.name}`;
+                // 按返回数据写入（使用 Supabase 的 id 作为唯一标识）
+                res.students.forEach((s) => {
+                    // 使用 Supabase 返回的 id，如果没有则使用名字生成
+                    const sid = s.id || `${grade}_${className}_${s.created_at}_${s.name}`;
                     studentsData[sid] = {
+                        id: sid,
                         name: s.name,
                         grade: s.grade || grade,
                         class: s.class || className,
-                        code: s.code || '',
+                        code: s.access_code || s.code || '',
                         earnedStamps: Array.isArray(s.earned_stamps) ? s.earned_stamps : [],
                         stampDates: s.stamp_dates || {},
                         monthlyHistory: s.monthly_history || {}
                     };
                 });
                 saveStudentsData();
-                console.log(`从 Supabase 加载了 ${res.students.length} 名学生`);
+                console.log(`从 Supabase 加载了 ${res.students.length} 名学生，数据:`, studentsData);
             } else {
                 console.warn('Supabase 无学生或返回异常，使用本地数据', res);
             }

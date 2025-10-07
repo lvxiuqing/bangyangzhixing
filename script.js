@@ -2059,8 +2059,10 @@ function handleParentClassChange() {
     currentStudentId = '';
     studentSelect.value = '';
     
-    // 更新学生列表（如启用云端则尝试从云端拉取）
-    if (typeof GAS !== 'undefined' && GAS.isEnabled && GAS.isEnabled() && currentGrade && currentClass) {
+    // 更新学生列表（优先从 Supabase 云端拉取）
+    if (Supabase.isEnabled() && currentGrade && currentClass) {
+        fetchStudentsFromCloud(currentGrade, currentClass);
+    } else if (typeof GAS !== 'undefined' && GAS.isEnabled && GAS.isEnabled() && currentGrade && currentClass) {
         fetchStudentsFromCloud(currentGrade, currentClass);
     } else {
         updateStudentList();
@@ -2143,8 +2145,10 @@ function handleClassChange() {
     currentStudentId = ''; // 重置学生选择
     studentSelect.value = '';
     
-    // 更新学生列表（如启用云端则尝试从云端拉取）
-    if (typeof GAS !== 'undefined' && GAS.isEnabled && GAS.isEnabled() && currentGrade && currentClass) {
+    // 更新学生列表（优先从 Supabase 云端拉取）
+    if (Supabase.isEnabled() && currentGrade && currentClass) {
+        fetchStudentsFromCloud(currentGrade, currentClass);
+    } else if (typeof GAS !== 'undefined' && GAS.isEnabled && GAS.isEnabled() && currentGrade && currentClass) {
         fetchStudentsFromCloud(currentGrade, currentClass);
     } else {
         updateStudentList();
@@ -2641,9 +2645,15 @@ function switchToParent() {
 }
 
 // 初始化主界面
-function initializeMainInterface() {
+async function initializeMainInterface() {
     // 从localStorage加载学生数据
     loadStudentsData();
+    
+    // 如果已选择年级和班级，且启用了 Supabase，从云端加载数据
+    if (currentGrade && currentClass && Supabase.isEnabled()) {
+        console.log('从 Supabase 加载学生数据...', currentGrade, currentClass);
+        await fetchStudentsFromCloud(currentGrade, currentClass);
+    }
     
     // 初始化界面
     updateUIForUserType();

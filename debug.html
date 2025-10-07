@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试页面</title>
+    <link rel="stylesheet" href="styles.css?v=1.0.1">
+</head>
+<body>
+    <div style="padding: 20px;">
+        <h1>调试页面</h1>
+        <p>如果这个页面的样式正常，说明CSS文件可以正常访问。</p>
+        <div style="margin-top: 20px; padding: 10px; background-color: #e3f2fd; border-left: 4px solid #2196f3;">
+            <p>当前环境信息：</p>
+            <ul>
+                <li>主机名: <span id="hostname"></span></li>
+                <li>路径配置 - 是否为GitHub Pages: <span id="isGitHubPages"></span></li>
+                <li>路径配置 - 基础路径: <span id="basePath"></span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="path_config.js"></script>
+    <script>
+        document.getElementById('hostname').textContent = window.location.hostname;
+        document.getElementById('isGitHubPages').textContent = PathConfig.isGitHubPages();
+        document.getElementById('basePath').textContent = PathConfig.getBasePath();
+    </script>
+</body>
+</html>

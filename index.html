@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="description" content="榜样集章 - 学生成长记录应用">
+    <meta name="keywords" content="教育,集章,学生成长,榜样">
+    <meta name="author" content="武强县府兴小学">
+    <title>榜样集章 - 学生成长记录</title>
+    <!-- 使用相对路径直接引用CSS，避免路径配置问题 -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="apple-touch-icon" href="images/192.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="path_config.js"></script>
+    <script src="supabase_config.js"></script>
+    <script>
+        // 动态设置manifest路径
+        document.addEventListener('DOMContentLoaded', function() {
+            // 直接使用相对路径，避免路径配置问题
+            const isGitHubPages = window.location.hostname === 'lvxiuqing.github.io';
+            const manifestPath = isGitHubPages ? 
+                '/bangyang/manifest_github.json' : 
+                '/manifest.json';
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = manifestPath;
+            document.head.appendChild(link);
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>榜样集章</h1>
+            <div class="user-info">
+                <div class="user-type-toggle">
+                    <button id="teacherBtn">教师端</button>
+                    <button id="parentBtn" class="active">家长端</button>
+                </div>
+                <div class="teacher-controls" id="teacherControls">
+                    <div class="class-selection">
+                        <select id="gradeSelect" class="form-control">
+                            <option value="">选择年级</option>
+                            <option value="grade1">一年级</option>
+                            <option value="grade2">二年级</option>
+                            <option value="grade3">三年级</option>
+                            <option value="grade4">四年级</option>
+                            <option value="grade5">五年级</option>
+                            <option value="grade6">六年级</option>
+                        </select>
+                        <select id="classSelect" class="form-control">
+                            <option value="">选择班级</option>
+                            <option value="class1">1班</option>
+                            <option value="class2">2班</option>
+                            <option value="class3">3班</option>
+                            <option value="class4">4班</option>
+                            <option value="class5">5班</option>
+                            <option value="class6">6班</option>
+                            <option value="class7">7班</option>
+                            <option value="class8">8班</option>
+                            <option value="class9">9班</option>
+                            <option value="class10">10班</option>
+                        </select>
+                    </div>
+                    <div class="upload-section">
+                        <label for="excelUpload" class="upload-label btn btn-success">
+                            <i class="fas fa-file-excel"></i> 上传学生名单
+                        </label>
+                        <input type="file" id="excelUpload" accept=".xlsx, .xls" style="display: none;">
+                        <button id="resetStampsBtn" class="btn btn-warning">
+                            <i class="fas fa-redo"></i> 重新集章
+                        </button>
+                        <button id="exportStatsBtn" class="btn btn-info">
+                            <i class="fas fa-download"></i> 导出统计表
+                        </button>
+                        <!-- 数据管理按钮 -->
+                        <button id="saveDataBtn" class="btn btn-primary" title="手动保存当前数据">
+                            <i class="fas fa-save"></i> 保存数据
+                        </button>
+                        <button id="loadDataBtn" class="btn btn-secondary" title="从本地加载已保存的数据">
+                            <i class="fas fa-folder-open"></i> 加载数据
+                        </button>
+                        <button id="clearDataBtn" class="btn btn-danger" title="清除本地保存的数据">
+                            <i class="fas fa-trash-alt"></i> 清除数据
+                        </button>
+                    </div>
+                </div>
+                <div class="parent-controls" id="parentControls" style="display: none;">
+                    <div class="parent-class-selection">
+                        <select id="parentGradeSelect" class="form-control" title="选择年级" aria-label="选择孩子所在年级">
+                            <option value="">选择年级</option>
+                            <option value="grade1">一年级</option>
+                            <option value="grade2">二年级</option>
+                            <option value="grade3">三年级</option>
+                            <option value="grade4">四年级</option>
+                            <option value="grade5">五年级</option>
+                            <option value="grade6">六年级</option>
+                        </select>
+                        <select id="parentClassSelect" class="form-control" title="选择班级" aria-label="选择孩子所在班级">
+                            <option value="">选择班级</option>
+                            <option value="class1">1班</option>
+                            <option value="class2">2班</option>
+                            <option value="class3">3班</option>
+                            <option value="class4">4班</option>
+                            <option value="class5">5班</option>
+                            <option value="class6">6班</option>
+                            <option value="class7">7班</option>
+                            <option value="class8">8班</option>
+                            <option value="class9">9班</option>
+                            <option value="class10">10班</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="student-selection">
+                    <div class="search-input-group">
+                        <input type="text" id="studentSearch" class="form-control" placeholder="搜索学生...">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                    <div class="user-select">
+                        <select id="studentSelect" class="form-control">
+                            <option value="">选择学生</option>
+                            <option value="student1">张小明</option>
+                            <option value="student2">李小红</option>
+                            <option value="student3">王小华</option>
+                            <option value="student4">赵小丽</option>
+                            <option value="student5">刘小强</option>
+                            <option value="student6">陈小美</option>
+                            <option value="student7">孙小勇</option>
+                        </select>
+                        <button id="viewHistoryBtn" class="btn btn-info btn-sm" style="display: none;">
+                            <i class="fas fa-history"></i> 查看历史
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="stamp-overview">
+                <h2>集章进度</h2>
+                <div class="month-info">
+                    <span id="currentMonth">当前月份：2025年9月</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="currentStamps">0</span> / <span id="totalStamps">7</span> 枚奖章
+                    </div>
+                </div>
+                <div class="category-progress" id="categoryProgress">
+                    <!-- 类别进度将通过JavaScript动态生成 -->
+                </div>
+            </div>
+
+            <div class="stamp-categories">
+                <h2>榜样类别</h2>
+                <div class="category-tabs">
+                    <button class="category-tab btn active" data-category="all">全部</button>
+                    <button class="category-tab btn" data-category="study">学习榜样</button>
+                    <button class="category-tab btn" data-category="behavior">文明榜样</button>
+                    <button class="category-tab btn" data-category="teamwork">纪律榜样</button>
+                    <button class="category-tab btn" data-category="responsibility">劳动榜样</button>
+                    <button class="category-tab btn" data-category="unity">团结榜样</button>
+                    <button class="category-tab btn" data-category="honesty">诚信榜样</button>
+                    <button class="category-tab btn" data-category="habit">习惯榜样</button>
+                </div>
+                <div class="batch-operations" id="batchOperations" style="display: none;">
+                    <div class="batch-info">
+                        <span id="batchStampName">选中的印章</span>
+                        <span class="batch-controls">
+                            <button id="batchAwardBtn" class="btn btn-success">
+                                <i class="fas fa-users"></i> 批量标记全班已完成
+                            </button>
+                            <button id="cancelBatchBtn" class="btn btn-danger">
+                                <i class="fas fa-times"></i> 取消批量
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stamp-grid" id="stampGrid">
+                <!-- 印章项目将通过JavaScript动态生成 -->
+            </div>
+        </main>
+
+        <footer>
+            <p>© 榜样集章 - 记录每一个成长瞬间</p>
+        </footer>
+    </div>
+
+    <!-- 印章详情模态框 -->
+    <div class="modal" id="stampModal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-header">
+                <h2 id="modalTitle">印章详情</h2>
+            </div>
+            <div class="modal-body">
+                <div class="stamp-image" id="modalStampImage"></div>
+                <div class="stamp-description" id="modalDescription"></div>
+                <div class="stamp-date" id="modalDate"></div>
+                <div class="stamp-teacher" id="modalTeacher"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="awardStampBtn" class="btn btn-primary">已完成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认重置模态框 -->
+    <div class="modal" id="confirmResetModal">
+        <div class="modal-content">
+            <span class="close" id="closeConfirmReset">&times;</span>
+            <div class="modal-header">
+                <h2>确认重置集章</h2>
+            </div>
+            <div class="modal-body">
+                <p id="confirmResetMessage">确认信息</p>
+                <div style="margin-top: 15px; padding: 15px; background-color: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                    <strong>此操作将：</strong>
+                    <ul style="margin: 10px 0 0 20px; padding: 0;">
+                        <li>保存当前月份的集章记录到历史中</li>
+                        <li>清空所有学生的当前集章状态</li>
+                        <li>开始新一轮集章</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelResetBtn" class="btn btn-secondary">取消</button>
+                <button id="confirmResetBtn" class="btn btn-danger">确认重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量授予模态框 -->
+    <div class="modal" id="batchAwardModal">
+        <div class="modal-content batch-modal">
+            <span class="close" id="closeBatchAward">&times;</span>
+            <div class="modal-header">
+                <h2>批量标记已完成</h2>
+            </div>
+            <div class="modal-body">
+                <div class="batch-stamp-info">
+                    <div class="stamp-preview">
+                        <div class="stamp-icon" id="batchStampIcon"></div>
+                        <div class="stamp-details">
+                            <h3 id="batchStampTitle">印章名称</h3>
+                            <p id="batchStampDesc">印章描述</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="batch-students-info">
+                    <p><strong>将为以下学生标记此项目为已完成：</strong></p>
+                    <div class="students-grid" id="batchStudentsList">
+                        <!-- 学生列表将动态生成 -->
+                    </div>
+                </div>
+                <div class="batch-note">
+                    <p style="color: #666; font-size: 14px; margin-top: 15px;">
+                        <i class="fas fa-info-circle"></i> 
+                        批量标记已完成后，您可以在印章网格中点击已完成的印章来取消个别学生的已完成标记。
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelBatchAwardBtn" class="btn btn-secondary">取消</button>
+                <button id="confirmBatchAwardBtn" class="btn btn-primary">确认批量标记已完成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史记录模态框 -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content history-modal">
+            <span class="close" id="closeHistory">&times;</span>
+            <div class="modal-header">
+                <h2 id="historyTitle">集章历史</h2>
+            </div>
+            <div class="modal-body">
+                <div id="historyContent">
+                    <!-- 历史内容将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 教师登录模态框 -->
+    <div class="modal" id="teacherLoginModal" style="display: none;">
+        <div class="modal-content login-modal">
+            <div class="modal-header login-header">
+                <h2>教师端登录</h2>
+                <p class="login-subtitle">武强县府兴小学小榜样集章系统</p>
+            </div>
+            <div class="modal-body login-body">
+                <div class="login-form">
+                    <div class="form-group">
+                        <label for="teacherAccount">账号</label>
+                        <input type="text" id="teacherAccount" value="武强县府兴小学小榜样集章系统" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="teacherPassword">密码</label>
+                        <input type="password" id="teacherPassword" placeholder="请输入教师密码">
+                    </div>
+                    <div class="error-message" id="loginError" style="display: none;">
+                        密码错误
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer login-footer">
+                <button id="loginBtn" class="btn btn-primary btn-lg login-btn">登录</button>
+                <button id="switchToParentBtn" class="btn btn-secondary">切换到家长端</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="gas_config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -394,7 +394,8 @@ const Supabase = (() => {
 
 // 生成访问码（6位字母数字）
 function generateAccessCode(name, grade, className) {
-    const str = `${name}_${grade}_${className}_${Date.now()}`;
+    // 移除 Date.now()，确保相同学生每次生成相同的访问码
+    const str = `${name}_${grade}_${className}`;
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
         hash = ((hash << 5) - hash) + str.charCodeAt(i);
@@ -407,7 +408,7 @@ function generateAccessCode(name, grade, className) {
         code += chars[num % chars.length];
         num = Math.floor(num / chars.length);
     }
-    return code;
+    return code.toUpperCase(); // 确保大写
 }
 
 // ========== 云端（Google Apps Script）API 封装（保留作为备选）==========
@@ -727,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showNotification('数据已保存到本地，但云端同步失败！', 'warning');
                 }
             } else {
-                showNotification('数据已手动保存到本地存储！');
+            showNotification('数据已手动保存到本地存储！');
             }
         });
     }
@@ -810,7 +811,7 @@ function updateUIForUserType() {
             updateParentUI();
         } else {
             // 未验证时显示选择界面
-            parentControls.style.display = 'flex';
+        parentControls.style.display = 'flex';
         }
         
         // 家长端可以查看历史
@@ -2088,7 +2089,7 @@ function handleParentGradeChange() {
     if (typeof GAS !== 'undefined' && GAS.isEnabled && GAS.isEnabled()) {
         updateStudentSelectOptions([]);
     } else {
-        updateStudentList();
+    updateStudentList();
     }
     
     // 重新渲染印章和进度
@@ -2156,7 +2157,7 @@ function handleParentClassChange() {
     } else if (typeof GAS !== 'undefined' && GAS.isEnabled && GAS.isEnabled() && currentGrade && currentClass) {
         fetchStudentsFromCloud(currentGrade, currentClass);
     } else {
-        updateStudentList();
+    updateStudentList();
     }
     
     // 重新渲染印章和进度
@@ -2190,7 +2191,7 @@ function handleGradeChange() {
     if (typeof GAS !== 'undefined' && GAS.isEnabled && GAS.isEnabled()) {
         updateStudentSelectOptions([]);
     } else {
-        updateStudentList();
+    updateStudentList();
     }
     
     // 重新渲染印章
@@ -2257,7 +2258,7 @@ function handleClassChange() {
     } else if (typeof GAS !== 'undefined' && GAS.isEnabled && GAS.isEnabled() && currentGrade && currentClass) {
         fetchStudentsFromCloud(currentGrade, currentClass);
     } else {
-        updateStudentList();
+    updateStudentList();
     }
     
     // 重新渲染印章
@@ -3350,10 +3351,10 @@ function generateStudentData(student) {
     
     // 添加当前月份数据（可能为空，如果刚重置）
     allMonthsData[currentMonthKeyToUse] = {
-        earnedStamps: [...currentEarnedStamps], // 创建副本避免修改原数据
-        stampDates: {...currentStampDates}, // 创建副本避免修改原数据
-        awards: calculateMonthlyAwards(currentEarnedStamps, student.grade)
-    };
+            earnedStamps: [...currentEarnedStamps], // 创建副本避免修改原数据
+            stampDates: {...currentStampDates}, // 创建副本避免修改原数据
+            awards: calculateMonthlyAwards(currentEarnedStamps, student.grade)
+        };
     console.log(`添加当前月份数据到 ${currentMonthKeyToUse}`);
     console.log(`当前月份数据:`, allMonthsData[currentMonthKeyToUse]);
     
@@ -3593,10 +3594,10 @@ function generateMergeRanges(student, worksheetData) {
     }
     
     allMonthsData[currentMonthKeyToUse] = {
-        earnedStamps: currentEarnedStamps,
-        stampDates: currentStampDates,
-        awards: calculateMonthlyAwards(currentEarnedStamps, student.grade)
-    };
+            earnedStamps: currentEarnedStamps,
+            stampDates: currentStampDates,
+            awards: calculateMonthlyAwards(currentEarnedStamps, student.grade)
+        };
     
     const months = Object.keys(allMonthsData).sort();
     

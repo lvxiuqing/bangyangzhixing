@@ -507,13 +507,27 @@ function loadStudentsData() {
         if (savedData) {
             studentsData = JSON.parse(savedData);
             
-            // 确保所有学生对象都有monthlyHistory属性
+            // 确保所有学生对象都有必要的属性
+            let hasUpdates = false;
             Object.keys(studentsData).forEach(studentId => {
                 const student = studentsData[studentId];
                 if (!student.monthlyHistory) {
                     student.monthlyHistory = {};
+                    hasUpdates = true;
+                }
+                // 自动为没有访问码的学生生成访问码
+                if (!student.code && student.name && student.grade && student.class) {
+                    student.code = generateAccessCode(student.name, student.grade, student.class);
+                    hasUpdates = true;
+                    console.log(`为学生 ${student.name} 生成访问码: ${student.code}`);
                 }
             });
+            
+            // 如果有更新，保存数据
+            if (hasUpdates) {
+                saveStudentsData();
+                console.log('已为缺少访问码的学生自动生成访问码');
+            }
             
             console.log('学生数据已从localStorage加载');
             return true;
@@ -2358,7 +2372,11 @@ function processExcelData(jsonData) {
             id: id,
             name: String(name).trim(),
             grade: currentGrade,
-            class: currentClass
+            class: currentClass,
+            code: generateAccessCode(String(name).trim(), currentGrade, currentClass), // 生成访问码
+            earnedStamps: [],
+            stampDates: {},
+            monthlyHistory: {}
         };
         
         validStudents.push(student);
@@ -2445,6 +2463,7 @@ function updateStudentsData(newStudents) {
             name: student.name,
             grade: student.grade,
             class: student.class,
+            code: student.code || generateAccessCode(student.name, student.grade, student.class), // 确保有访问码
             earnedStamps: [], // 重新开始集章
             stampDates: {}, // 重新记录日期
             monthlyHistory: {} // 重新开始历史记录

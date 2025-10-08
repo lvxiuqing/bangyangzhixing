@@ -320,6 +320,37 @@
         </div>
     </div>
 
+    <!-- 家长访问码验证模态框 -->
+    <div class="modal" id="parentAccessModal" style="display: none;">
+        <div class="modal-content login-modal">
+            <div class="modal-header login-header">
+                <h2>家长端验证</h2>
+                <p class="login-subtitle">请输入您孩子的访问码</p>
+            </div>
+            <div class="modal-body login-body">
+                <div class="login-form">
+                    <div class="form-group">
+                        <label for="parentAccessCode">访问码</label>
+                        <input type="text" id="parentAccessCode" placeholder="请输入6位访问码" maxlength="6" style="text-transform: uppercase;">
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            如果您不知道访问码，请联系老师获取
+                        </small>
+                    </div>
+                    <div class="error-message" id="accessCodeError" style="display: none;">
+                        访问码错误或学生不存在
+                    </div>
+                    <div class="success-message" id="accessCodeSuccess" style="display: none; color: #4caf50; margin-top: 10px;">
+                        验证成功！正在加载...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer login-footer">
+                <button id="verifyAccessCodeBtn" class="btn btn-primary btn-lg login-btn">验证</button>
+                <button id="cancelParentAccessBtn" class="btn btn-secondary">取消</button>
+            </div>
+        </div>
+    </div>
+
     <script src="gas_config.js"></script>
     <script src="script.js"></script>
 </body>

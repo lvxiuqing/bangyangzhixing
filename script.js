@@ -111,6 +111,28 @@ const Supabase = (() => {
             }
         },
         
+        // 根据访问码查找学生
+        async findStudentByAccessCode(accessCode) {
+            const client = getClient();
+            if (!client) return { ok: false, skipped: true };
+            try {
+                const { data, error } = await client
+                    .from('students')
+                    .select('*')
+                    .eq('access_code', accessCode.toUpperCase())
+                    .limit(1);
+                
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    return { ok: false, error: 'student not found' };
+                }
+                return { ok: true, student: data[0] };
+            } catch (err) {
+                console.error('Supabase findStudentByAccessCode 失败:', err);
+                return { ok: false, error: String(err) };
+            }
+        },
+        
         // 上传学生名单（替换指定班级）
         async uploadStudents(grade, className, students) {
             const client = getClient();
@@ -129,7 +151,7 @@ const Supabase = (() => {
                     name: s.name,
                     grade: grade,
                     class: className,
-                    code: s.code || generateAccessCode(s.name, grade, className),
+                    access_code: s.code || generateAccessCode(s.name, grade, className),
                     earned_stamps: s.earnedStamps || [],
                     stamp_dates: s.stampDates || {},
                     monthly_history: s.monthlyHistory || {}
@@ -524,6 +546,8 @@ let currentGrade = '';
 let currentClass = '';
 let batchMode = false; // 批量模式
 let selectedStampForBatch = null; // 选中的印章用于批量操作
+let parentVerifiedStudentId = ''; // 家长验证通过的学生 ID
+let isParentVerified = false; // 家长是否已验证
 
 // DOM元素
 const teacherBtn = document.getElementById('teacherBtn');
@@ -587,6 +611,14 @@ const teacherPasswordInput = document.getElementById('teacherPassword');
 const loginBtn = document.getElementById('loginBtn');
 const switchToParentBtn = document.getElementById('switchToParentBtn');
 const loginError = document.getElementById('loginError');
+
+// 家长访问码验证相关DOM元素
+const parentAccessModal = document.getElementById('parentAccessModal');
+const parentAccessCodeInput = document.getElementById('parentAccessCode');
+const verifyAccessCodeBtn = document.getElementById('verifyAccessCodeBtn');
+const cancelParentAccessBtn = document.getElementById('cancelParentAccessBtn');
+const accessCodeError = document.getElementById('accessCodeError');
+const accessCodeSuccess = document.getElementById('accessCodeSuccess');
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
@@ -749,9 +781,18 @@ function updateUIForUserType() {
     if (currentUserType === 'parent') {
         // 家长端只能查看，不能授予印章
         awardStampBtn.style.display = 'none';
-        // 隐藏教师控制区域，显示家长控制区域
+        // 隐藏教师控制区域
         teacherControls.style.display = 'none';
-        parentControls.style.display = 'flex';
+        
+        // 如果家长已验证，显示专属界面
+        if (isParentVerified && parentVerifiedStudentId) {
+            parentControls.style.display = 'none';
+            updateParentUI();
+        } else {
+            // 未验证时显示选择界面
+            parentControls.style.display = 'flex';
+        }
+        
         // 家长端可以查看历史
         if (currentStudentId) {
             viewHistoryBtn.style.display = 'flex';
@@ -783,6 +824,9 @@ function handleStudentChange() {
     } else {
         viewHistoryBtn.style.display = 'none';
     }
+    
+    // 更新访问码显示
+    updateAccessCodeDisplay();
     
     renderStamps();
     updateProgress();
@@ -2575,6 +2619,81 @@ function updateStudentSelectOptions(students) {
         currentStudentId = '';
         studentSelect.value = '';
     }
+    
+    // 更新访问码显示
+    updateAccessCodeDisplay();
+}
+
+// 更新访问码显示
+function updateAccessCodeDisplay() {
+    // 查找或创建访问码显示区域
+    let accessCodeDisplay = document.getElementById('accessCodeDisplay');
+    
+    if (currentUserType === 'teacher' && currentStudentId) {
+        const student = studentsData[currentStudentId];
+        if (student && student.code) {
+            if (!accessCodeDisplay) {
+                accessCodeDisplay = document.createElement('div');
+                accessCodeDisplay.id = 'accessCodeDisplay';
+                accessCodeDisplay.style.cssText = 'padding: 12px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; margin: 15px 0; text-align: center;';
+                
+                // 插入到进度区域之前
+                const progressSection = document.querySelector('.progress-section');
+                if (progressSection && progressSection.parentNode) {
+                    progressSection.parentNode.insertBefore(accessCodeDisplay, progressSection);
+                }
+            }
+            
+            accessCodeDisplay.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <i class="fas fa-key" style="color: #ff9800;"></i>
+                    <span style="font-weight: bold; color: #333;">家长访问码：</span>
+                    <code style="font-size: 18px; font-weight: bold; color: #d32f2f; background: white; padding: 5px 15px; border-radius: 4px; letter-spacing: 2px;">${student.code}</code>
+                    <button onclick="copyAccessCode('${student.code}')" class="btn btn-sm" style="padding: 5px 10px; font-size: 12px;" title="复制访问码">
+                        <i class="fas fa-copy"></i> 复制
+                    </button>
+                </div>
+                <small style="color: #666; display: block; margin-top: 5px;">请将此访问码分享给${student.name}家长，用于查看集章进度</small>
+            `;
+            accessCodeDisplay.style.display = 'block';
+        }
+    } else {
+        // 非教师端或未选择学生时隐藏
+        if (accessCodeDisplay) {
+            accessCodeDisplay.style.display = 'none';
+        }
+    }
+}
+
+// 复制访问码到剪贴板
+function copyAccessCode(code) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+            showNotification(`访问码 ${code} 已复制到剪贴板！`);
+        }).catch(err => {
+            console.error('复制失败:', err);
+            fallbackCopyAccessCode(code);
+        });
+    } else {
+        fallbackCopyAccessCode(code);
+    }
+}
+
+// 备用复制方法
+function fallbackCopyAccessCode(code) {
+    const textarea = document.createElement('textarea');
+    textarea.value = code;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+        showNotification(`访问码 ${code} 已复制到剪贴板！`);
+    } catch (err) {
+        showNotification('复制失败，请手动复制访问码', 'error');
+    }
+    document.body.removeChild(textarea);
 }
 
 // ========== 登录相关功能 ==========
@@ -2621,6 +2740,28 @@ function setupLoginEventListeners() {
     // 切换到家长端按钮事件
     if (switchToParentBtn) {
         switchToParentBtn.addEventListener('click', switchToParent);
+    }
+    
+    // 家长访问码验证事件
+    if (verifyAccessCodeBtn) {
+        verifyAccessCodeBtn.addEventListener('click', handleParentAccessCodeVerify);
+    }
+    
+    if (parentAccessCodeInput) {
+        parentAccessCodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleParentAccessCodeVerify();
+            }
+        });
+    }
+    
+    if (cancelParentAccessBtn) {
+        cancelParentAccessBtn.addEventListener('click', () => {
+            parentAccessModal.style.display = 'none';
+            parentAccessCodeInput.value = '';
+            accessCodeError.style.display = 'none';
+            accessCodeSuccess.style.display = 'none';
+        });
     }
 }
 
@@ -2685,7 +2826,159 @@ function switchToParent() {
     currentUserType = 'parent';
     switchUserType('parent');
     
-    showNotification('已切换到家长端');
+    // 显示访问码验证模态框
+    showParentAccessModal();
+}
+
+// 显示家长访问码验证模态框
+function showParentAccessModal() {
+    if (parentAccessModal) {
+        parentAccessModal.style.display = 'flex';
+        parentAccessCodeInput.value = '';
+        accessCodeError.style.display = 'none';
+        accessCodeSuccess.style.display = 'none';
+        parentAccessCodeInput.focus();
+    }
+}
+
+// 处理家长访问码验证
+async function handleParentAccessCodeVerify() {
+    const accessCode = parentAccessCodeInput.value.trim().toUpperCase();
+    
+    if (!accessCode) {
+        accessCodeError.textContent = '请输入访问码';
+        accessCodeError.style.display = 'block';
+        accessCodeSuccess.style.display = 'none';
+        return;
+    }
+    
+    if (accessCode.length !== 6) {
+        accessCodeError.textContent = '访问码必须是6位';
+        accessCodeError.style.display = 'block';
+        accessCodeSuccess.style.display = 'none';
+        return;
+    }
+    
+    // 从 Supabase 或本地查找匹配的学生
+    let foundStudent = null;
+    let foundStudentId = null;
+    
+    // 优先从 Supabase 查询
+    if (Supabase.isEnabled()) {
+        try {
+            const res = await Supabase.findStudentByAccessCode(accessCode);
+            if (res && res.ok && res.student) {
+                foundStudent = res.student;
+                foundStudentId = res.student.id;
+                
+                // 同步到本地 studentsData
+                const sid = foundStudent.id || `${foundStudent.grade}_${foundStudent.class}_${foundStudent.created_at}_${foundStudent.name}`;
+                studentsData[sid] = {
+                    id: sid,
+                    name: foundStudent.name,
+                    grade: foundStudent.grade,
+                    class: foundStudent.class,
+                    code: foundStudent.access_code || foundStudent.code,
+                    earnedStamps: Array.isArray(foundStudent.earned_stamps) ? foundStudent.earned_stamps : [],
+                    stampDates: foundStudent.stamp_dates || {},
+                    monthlyHistory: foundStudent.monthly_history || {}
+                };
+                foundStudentId = sid;
+                saveStudentsData();
+            }
+        } catch (e) {
+            console.warn('从 Supabase 查询学生失败:', e);
+        }
+    }
+    
+    // 如果 Supabase 没找到，从本地查找
+    if (!foundStudent) {
+        for (const [studentId, student] of Object.entries(studentsData)) {
+            if (student.code && student.code.toUpperCase() === accessCode) {
+                foundStudent = student;
+                foundStudentId = studentId;
+                break;
+            }
+        }
+    }
+    
+    if (!foundStudent) {
+        accessCodeError.textContent = '访问码错误或学生不存在';
+        accessCodeError.style.display = 'block';
+        accessCodeSuccess.style.display = 'none';
+        return;
+    }
+    
+    // 验证成功
+    accessCodeError.style.display = 'none';
+    accessCodeSuccess.textContent = `验证成功！欢迎${foundStudent.name}家长`;
+    accessCodeSuccess.style.display = 'block';
+    
+    // 保存验证信息
+    parentVerifiedStudentId = foundStudentId;
+    isParentVerified = true;
+    currentGrade = foundStudent.grade;
+    currentClass = foundStudent.class;
+    currentStudentId = foundStudentId;
+    
+    // 保存到 localStorage
+    localStorage.setItem('parentVerifiedStudentId', foundStudentId);
+    localStorage.setItem('isParentVerified', 'true');
+    
+    // 延迟关闭模态框并更新界面
+    setTimeout(() => {
+        parentAccessModal.style.display = 'none';
+        updateParentUI();
+        showNotification(`欢迎${foundStudent.name}家长！`);
+    }, 1000);
+}
+
+// 更新家长端UI
+function updateParentUI() {
+    if (!isParentVerified || !parentVerifiedStudentId) {
+        return;
+    }
+    
+    const student = studentsData[parentVerifiedStudentId];
+    if (!student) {
+        showNotification('学生数据加载失败', 'error');
+        return;
+    }
+    
+    // 隐藏年级班级选择（家长只能看自己孩子）
+    if (parentControls) {
+        parentControls.style.display = 'none';
+    }
+    
+    // 隐藏学生搜索和选择（自动选中验证的学生）
+    if (studentSearch) {
+        studentSearch.style.display = 'none';
+    }
+    if (studentSelect) {
+        studentSelect.style.display = 'none';
+    }
+    
+    // 显示欢迎信息
+    const welcomeMsg = document.createElement('div');
+    welcomeMsg.id = 'parentWelcome';
+    welcomeMsg.style.cssText = 'padding: 15px; background: #e3f2fd; border-radius: 8px; margin-bottom: 20px; text-align: center;';
+    welcomeMsg.innerHTML = `
+        <h3 style="margin: 0 0 5px 0; color: #1976d2;">欢迎 ${student.name} 家长</h3>
+        <p style="margin: 0; color: #666; font-size: 14px;">${getGradeName(student.grade)} ${getClassName(student.class)}</p>
+    `;
+    
+    // 插入欢迎信息（如果不存在）
+    if (!document.getElementById('parentWelcome')) {
+        const container = document.querySelector('.container');
+        const header = container.querySelector('.header');
+        if (header && header.nextSibling) {
+            container.insertBefore(welcomeMsg, header.nextSibling);
+        }
+    }
+    
+    // 更新界面
+    renderStamps();
+    updateProgress();
 }
 
 // 初始化主界面

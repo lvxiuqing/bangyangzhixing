@@ -561,6 +561,7 @@ const parentClassSelect = document.getElementById('parentClassSelect');
 const excelUpload = document.getElementById('excelUpload');
 const resetStampsBtn = document.getElementById('resetStampsBtn');
 const exportStatsBtn = document.getElementById('exportStatsBtn');
+const exportAccessCodesBtn = document.getElementById('exportAccessCodesBtn');
 const studentSearch = document.getElementById('studentSearch');
 const studentSelect = document.getElementById('studentSelect');
 const viewHistoryBtn = document.getElementById('viewHistoryBtn');
@@ -661,6 +662,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('导出统计表按钮事件监听器已添加');
     } else {
         console.error('找不到 exportStatsBtn 元素！');
+    }
+    
+    // 导出访问码表按钮事件监听器
+    if (exportAccessCodesBtn) {
+        exportAccessCodesBtn.addEventListener('click', handleExportAccessCodes);
     }
     
     studentSearch.addEventListener('input', handleStudentSearch);
@@ -2665,8 +2671,8 @@ function updateAccessCodeDisplay() {
     }
 }
 
-// 复制访问码到剪贴板
-function copyAccessCode(code) {
+// 复制访问码到剪贴板（全局函数）
+window.copyAccessCode = function(code) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(code).then(() => {
             showNotification(`访问码 ${code} 已复制到剪贴板！`);
@@ -2677,7 +2683,7 @@ function copyAccessCode(code) {
     } else {
         fallbackCopyAccessCode(code);
     }
-}
+};
 
 // 备用复制方法
 function fallbackCopyAccessCode(code) {
@@ -3037,6 +3043,130 @@ async function initializeMainInterface() {
 // ========== 导出统计表功能 ==========
 
 // 处理导出统计表
+// 导出访问码表
+function handleExportAccessCodes() {
+    console.log('导出访问码表按钮被点击了！');
+    
+    // 检查是否选择了年级和班级
+    if (!currentGrade || !currentClass) {
+        showNotification('请先选择年级和班级！', 'error');
+        return;
+    }
+    
+    // 获取当前班级的所有学生
+    const classStudents = getClassStudents();
+    
+    if (classStudents.length === 0) {
+        showNotification('当前班级没有学生数据！', 'error');
+        return;
+    }
+    
+    const gradeName = getGradeName(currentGrade);
+    const className = getClassName(currentClass);
+    showNotification(`正在为${gradeName}${className}生成访问码表...`);
+    
+    try {
+        // 检查XLSX库是否可用
+        if (typeof XLSX === 'undefined') {
+            throw new Error('Excel库未正确加载，请刷新页面重试');
+        }
+        
+        // 生成访问码数据
+        const accessCodeData = [];
+        
+        // 添加表头
+        accessCodeData.push([
+            '序号',
+            '学生姓名',
+            '年级',
+            '班级',
+            '家长访问码',
+            '使用说明'
+        ]);
+        
+        // 添加学生数据
+        classStudents.forEach((student, index) => {
+            accessCodeData.push([
+                index + 1,
+                student.name,
+                gradeName,
+                className,
+                student.code || '未生成',
+                '家长使用此访问码登录家长端查看孩子集章进度'
+            ]);
+        });
+        
+        // 创建工作簿
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(accessCodeData);
+        
+        // 设置列宽
+        ws['!cols'] = [
+            { wch: 6 },   // 序号
+            { wch: 12 },  // 学生姓名
+            { wch: 10 },  // 年级
+            { wch: 8 },   // 班级
+            { wch: 15 },  // 家长访问码
+            { wch: 40 }   // 使用说明
+        ];
+        
+        // 设置表头样式（加粗）
+        const headerStyle = {
+            font: { bold: true },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            fill: { fgColor: { rgb: 'FFE0B2' } }
+        };
+        
+        // 应用表头样式
+        ['A1', 'B1', 'C1', 'D1', 'E1', 'F1'].forEach(cell => {
+            if (ws[cell]) {
+                ws[cell].s = headerStyle;
+            }
+        });
+        
+        // 添加工作表到工作簿
+        XLSX.utils.book_append_sheet(wb, ws, '家长访问码');
+        
+        // 添加使用说明工作表
+        const instructions = [
+            ['家长访问码使用说明'],
+            [''],
+            ['1. 打开集章系统网址：https://bangyangzhixing.zeabur.app'],
+            ['2. 点击页面顶部的"家长端"按钮'],
+            ['3. 输入您孩子的6位访问码'],
+            ['4. 点击"验证"按钮'],
+            ['5. 验证成功后即可查看孩子的集章进度'],
+            [''],
+            ['注意事项：'],
+            ['- 每个学生有唯一的访问码，请妥善保管'],
+            ['- 访问码区分大小写，请准确输入'],
+            ['- 如访问码遗失，请联系老师重新获取'],
+            ['- 家长端仅可查看，不能修改集章数据'],
+            [''],
+            [`导出时间：${new Date().toLocaleString('zh-CN')}`],
+            [`导出班级：${gradeName}${className}`],
+            [`学生人数：${classStudents.length}人`]
+        ];
+        
+        const wsInstructions = XLSX.utils.aoa_to_sheet(instructions);
+        wsInstructions['!cols'] = [{ wch: 60 }];
+        XLSX.utils.book_append_sheet(wb, wsInstructions, '使用说明');
+        
+        // 生成文件名
+        const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const filename = `${gradeName}${className}_家长访问码_${timestamp}.xlsx`;
+        
+        // 下载文件
+        XLSX.writeFile(wb, filename);
+        
+        showNotification(`访问码表导出成功！共${classStudents.length}名学生`);
+        
+    } catch (error) {
+        console.error('导出访问码表失败:', error);
+        showNotification(`导出失败：${error.message}`, 'error');
+    }
+}
+
 function handleExportStats() {
     console.log('导出统计表按钮被点击了！');
     

@@ -2473,11 +2473,17 @@ function updateStudentsData(newStudents) {
     
     // 保存数据到localStorage
     saveStudentsData();
-    // Supabase 云端同步：替换该班级学生名单
+    // Supabase 云端同步：替换该班级学生名单（包含访问码）
     if (Supabase.isEnabled()) {
-        const payload = newStudents.map(s => ({ name: s.name, grade: s.grade, class: s.class }));
+        const payload = newStudents.map(s => ({ 
+            name: s.name, 
+            grade: s.grade, 
+            class: s.class,
+            code: s.code // 确保传递访问码
+        }));
         Supabase.uploadStudents(currentGrade, currentClass, payload).then(r => {
             if (!r || r.ok !== true) console.warn('Supabase uploadStudents 失败或跳过', r);
+            else console.log('✅ Supabase 上传成功，访问码已同步');
         });
     }
     

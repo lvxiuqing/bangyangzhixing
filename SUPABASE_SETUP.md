@@ -23,7 +23,7 @@ create table if not exists public.students (
   name text not null,
   grade text not null,
   class text not null,
-  code text not null unique,
+  access_code text not null unique,
   earned_stamps jsonb default '[]'::jsonb,
   stamp_dates jsonb default '{}'::jsonb,
   monthly_history jsonb default '{}'::jsonb,
@@ -32,7 +32,7 @@ create table if not exists public.students (
 );
 
 -- 创建访问码索引（家长查询用）
-create index if not exists students_code_idx on public.students (code);
+create index if not exists students_access_code_idx on public.students (access_code);
 
 -- 创建年级班级索引（老师查询用）
 create index if not exists students_grade_class_idx on public.students (grade, class);
@@ -181,6 +181,22 @@ A: 确保：
 
 ### Q: 想要更严格的权限控制？
 A: 参考上面"安全说明"部分的进阶 RLS 配置，启用 Supabase Auth。
+
+## 数据库升级
+
+### 如果你之前创建的表使用 `code` 字段，需要升级为 `access_code`
+
+在 Supabase SQL Editor 中运行：
+
+```sql
+-- 将 code 字段重命名为 access_code
+ALTER TABLE public.students 
+RENAME COLUMN code TO access_code;
+
+-- 更新索引名称（如果存在旧索引）
+DROP INDEX IF EXISTS students_code_idx;
+CREATE INDEX IF NOT EXISTS students_access_code_idx ON public.students (access_code);
+```
 
 ## 下一步
 

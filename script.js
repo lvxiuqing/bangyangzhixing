@@ -2958,8 +2958,30 @@ async function handleParentAccessCodeVerify() {
     localStorage.setItem('isParentVerified', 'true');
     
     // 延迟关闭模态框并更新界面
-    setTimeout(() => {
+    setTimeout(async () => {
         parentAccessModal.style.display = 'none';
+        
+        // 从 Supabase 重新加载最新数据
+        if (Supabase.isEnabled()) {
+            console.log('🔄 家长端：从 Supabase 重新加载最新数据...');
+            const res = await Supabase.findStudentByAccessCode(accessCode);
+            if (res && res.ok && res.student) {
+                // 更新本地数据为最新
+                studentsData[foundStudentId] = {
+                    id: foundStudentId,
+                    name: res.student.name,
+                    grade: res.student.grade,
+                    class: res.student.class,
+                    code: res.student.access_code || res.student.code,
+                    earnedStamps: Array.isArray(res.student.earned_stamps) ? res.student.earned_stamps : [],
+                    stampDates: res.student.stamp_dates || {},
+                    monthlyHistory: res.student.monthly_history || {}
+                };
+                saveStudentsData();
+                console.log(`✅ 已加载最新数据，当前印章数：${res.student.earned_stamps?.length || 0}`);
+            }
+        }
+        
         updateParentUI();
         showNotification(`欢迎${foundStudent.name}家长！`);
     }, 1000);
@@ -2990,13 +3012,20 @@ function updateParentUI() {
         studentSelect.style.display = 'none';
     }
     
-    // 显示欢迎信息
+    // 显示欢迎信息和刷新按钮
     const welcomeMsg = document.createElement('div');
     welcomeMsg.id = 'parentWelcome';
     welcomeMsg.style.cssText = 'padding: 15px; background: #e3f2fd; border-radius: 8px; margin-bottom: 20px; text-align: center;';
     welcomeMsg.innerHTML = `
-        <h3 style="margin: 0 0 5px 0; color: #1976d2;">欢迎 ${student.name} 家长</h3>
-        <p style="margin: 0; color: #666; font-size: 14px;">${getGradeName(student.grade)} ${getClassName(student.class)}</p>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+                <h3 style="margin: 0 0 5px 0; color: #1976d2;">欢迎 ${student.name} 家长</h3>
+                <p style="margin: 0; color: #666; font-size: 14px;">${getGradeName(student.grade)} ${getClassName(student.class)}</p>
+            </div>
+            <button onclick="refreshParentData()" class="btn btn-primary" style="margin: 0; padding: 8px 16px;" title="从云端获取最新数据">
+                <i class="fas fa-sync-alt"></i> 刷新数据
+            </button>
+        </div>
     `;
     
     // 插入欢迎信息（如果不存在）
@@ -3006,12 +3035,65 @@ function updateParentUI() {
         if (header && header.nextSibling) {
             container.insertBefore(welcomeMsg, header.nextSibling);
         }
+    } else {
+        // 更新已存在的欢迎信息
+        document.getElementById('parentWelcome').innerHTML = welcomeMsg.innerHTML;
     }
     
     // 更新界面
     renderStamps();
     updateProgress();
 }
+
+// 刷新家长端数据（全局函数）
+window.refreshParentData = async function() {
+    if (!isParentVerified || !parentVerifiedStudentId) {
+        showNotification('请先验证访问码', 'error');
+        return;
+    }
+    
+    const student = studentsData[parentVerifiedStudentId];
+    if (!student || !student.code) {
+        showNotification('无法获取学生信息', 'error');
+        return;
+    }
+    
+    showNotification('正在从云端获取最新数据...');
+    
+    if (Supabase.isEnabled()) {
+        try {
+            const res = await Supabase.findStudentByAccessCode(student.code);
+            if (res && res.ok && res.student) {
+                // 更新本地数据为最新
+                studentsData[parentVerifiedStudentId] = {
+                    id: parentVerifiedStudentId,
+                    name: res.student.name,
+                    grade: res.student.grade,
+                    class: res.student.class,
+                    code: res.student.access_code || res.student.code,
+                    earnedStamps: Array.isArray(res.student.earned_stamps) ? res.student.earned_stamps : [],
+                    stampDates: res.student.stamp_dates || {},
+                    monthlyHistory: res.student.monthly_history || {}
+                };
+                saveStudentsData();
+                
+                // 刷新界面
+                renderStamps();
+                updateProgress();
+                
+                showNotification(`✅ 数据已更新！当前已获得 ${res.student.earned_stamps?.length || 0} 个印章`);
+                console.log(`✅ 刷新成功，当前印章:`, res.student.earned_stamps);
+            } else {
+                showNotification('无法从云端获取数据', 'error');
+            }
+        } catch (e) {
+            console.error('刷新数据失败:', e);
+            showNotification('刷新失败，请稍后重试', 'error');
+        }
+    } else {
+        showNotification('云端同步未启用', 'warning');
+    }
+};
 
 // 初始化主界面
 async function initializeMainInterface() {

@@ -124,15 +124,15 @@ const Supabase = (() => {
                     .eq('class', className);
                 if (delError) throw delError;
                 
-                // 插入新数据
+                // 插入新数据，保留印章数据
                 const toInsert = students.map(s => ({
                     name: s.name,
                     grade: grade,
                     class: className,
-                    code: generateAccessCode(s.name, grade, className),
-                    earned_stamps: [],
-                    stamp_dates: {},
-                    monthly_history: {}
+                    code: s.code || generateAccessCode(s.name, grade, className),
+                    earned_stamps: s.earnedStamps || [],
+                    stamp_dates: s.stampDates || {},
+                    monthly_history: s.monthlyHistory || {}
                 }));
                 
                 const { data, error } = await client.from('students').insert(toInsert);
@@ -647,9 +647,36 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 添加数据管理按钮事件监听器
     if (saveDataBtn) {
-        saveDataBtn.addEventListener('click', function() {
+        saveDataBtn.addEventListener('click', async function() {
+            if (!currentGrade || !currentClass) {
+                showNotification('请先选择年级和班级！', 'error');
+                return;
+            }
+            
+            // 保存到本地
             saveStudentsData();
-            showNotification('数据已手动保存到本地存储！');
+            
+            // 同步到云端
+            if (Supabase.isEnabled()) {
+                const classStudents = getClassStudents();
+                const studentsArray = classStudents.map(s => ({
+                    name: s.name,
+                    grade: s.grade,
+                    class: s.class,
+                    earnedStamps: s.earnedStamps || [],
+                    stampDates: s.stampDates || {},
+                    monthlyHistory: s.monthlyHistory || {}
+                }));
+                
+                const res = await Supabase.uploadStudents(currentGrade, currentClass, studentsArray);
+                if (res && res.ok) {
+                    showNotification(`数据已保存到本地和云端！同步了${classStudents.length}名学生的数据`);
+                } else {
+                    showNotification('数据已保存到本地，但云端同步失败！', 'warning');
+                }
+            } else {
+                showNotification('数据已手动保存到本地存储！');
+            }
         });
     }
     

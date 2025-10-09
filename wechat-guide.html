@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信访问提示 - 榜样之星</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .step-number {
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .step-desc {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .url-box {
+            background: #e3f2fd;
+            border: 2px dashed #2196f3;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .url {
+            color: #1976d2;
+            font-weight: bold;
+            word-break: break-all;
+            font-size: 16px;
+        }
+        
+        .copy-btn {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        
+        .copy-btn:active {
+            background: #1976d2;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        
+        .note-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+        
+        .note-content {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .auto-redirect {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📱</div>
+        <h1>榜样之星集章系统</h1>
+        <p class="subtitle">请在外部浏览器中打开以获得最佳体验</p>
+        
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <div class="step-title">点击右上角菜单</div>
+                <div class="step-desc">点击微信右上角的"..."菜单按钮</div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <div class="step-title">选择"在浏览器打开"</div>
+                <div class="step-desc">在弹出菜单中选择"在浏览器中打开"或"在Safari中打开"</div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <div class="step-title">添加到主屏幕（可选）</div>
+                <div class="step-desc">在浏览器中可以将网页添加到手机主屏幕，方便下次直接打开</div>
+            </div>
+        </div>
+        
+        <div class="url-box">
+            <div class="url" id="siteUrl">bangyangzhixing.zeabur.app</div>
+            <button class="copy-btn" onclick="copyUrl()">📋 复制网址</button>
+        </div>
+        
+        <div class="note">
+            <div class="note-title">💡 温馨提示</div>
+            <div class="note-content">
+                本系统为教育类应用，用于班级印章管理和家校沟通。在外部浏览器中打开可以获得更好的使用体验，并支持离线访问功能。
+            </div>
+        </div>
+        
+        <div class="auto-redirect">
+            <p>如果您不在微信中，页面将自动跳转...</p>
+        </div>
+    </div>
+    
+    <script>
+        const siteUrl = 'https://bangyangzhixing.zeabur.app';
+        
+        // 复制网址
+        function copyUrl() {
+            const text = siteUrl;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = document.querySelector('.copy-btn');
+                    btn.textContent = '✅ 已复制';
+                    setTimeout(() => {
+                        btn.innerHTML = '📋 复制网址';
+                    }, 2000);
+                });
+            } else {
+                // 降级方案
+                const input = document.createElement('input');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = '✅ 已复制';
+                setTimeout(() => {
+                    btn.innerHTML = '📋 复制网址';
+                }, 2000);
+            }
+        }
+        
+        // 检测是否在微信中
+        function isWeChat() {
+            const ua = navigator.userAgent.toLowerCase();
+            return ua.includes('micromessenger');
+        }
+        
+        // 如果不在微信中，自动跳转
+        if (!isWeChat()) {
+            setTimeout(() => {
+                window.location.href = siteUrl;
+            }, 2000);
+        }
+        
+        // 检测是否在QQ中
+        function isQQ() {
+            const ua = navigator.userAgent.toLowerCase();
+            return ua.includes('qq/') && !ua.includes('micromessenger');
+        }
+        
+        // 更新提示文字
+        if (isQQ()) {
+            document.querySelector('.subtitle').textContent = '请在外部浏览器中打开以获得最佳体验';
+        }
+    </script>
+</body>
+</html>
+

@@ -3491,10 +3491,12 @@ function generateStudentData(student) {
     // 添加动态月份列和对应的奖章列
     if (months.length > 0) {
         months.forEach(monthKey => {
-            // 提取基础月份键用于显示
+            // 提取基础月份键用于显示（处理带下划线的键如 "2025-10_1"）
             const baseMonthKey = monthKey.split('_')[0];
             const [year, month] = baseMonthKey.split('-');
-            headerRow.push(`（${parseInt(month)}）月`);
+            // 直接使用提取出的月份号，不依赖当前系统日期
+            const monthNum = parseInt(month);
+            headerRow.push(`（${monthNum}）月`);
             headerRow.push('是否获得奖章');
         });
     } else {
